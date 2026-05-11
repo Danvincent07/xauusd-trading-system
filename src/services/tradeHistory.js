@@ -88,7 +88,7 @@ export async function fetchHistory({ page = 1, pageSize = 20, search = '', filte
     .from(TABLE)
     .select('*', { count: 'exact' })
     .neq('status', 'OPEN')
-    .or('confidence.is.null,confidence.gte.55')
+    .gte('confidence', 55)
     .order('close_time', { ascending: false })
 
   if (filter === 'WIN')  query = query.eq('result', 'WIN')
@@ -115,7 +115,7 @@ export async function fetchStats() {
     .from(TABLE)
     .select('result, pnl')
     .neq('status', 'OPEN')
-    .or('confidence.is.null,confidence.gte.55')
+    .gte('confidence', 55)
     .order('close_time', { ascending: true })
 
   if (error || !data) return null

@@ -161,7 +161,7 @@ export default function TradeHistory() {
   const [stats, setStats]       = useState(null)
   const [page, setPage]         = useState(1)
   const [search, setSearch]     = useState('')
-  const [filter, setFilter]     = useState('WIN')
+  const [filter, setFilter]     = useState('ALL')
   const [loading, setLoading]   = useState(false)
   const [dbError, setDbError]   = useState(null)
   const searchTimer             = useRef(null)
