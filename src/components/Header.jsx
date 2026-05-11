@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, RefreshCw, Clock, User, Settings, BarChart2, Shield, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, Clock, User, Settings, BarChart2, Shield, LogOut, ChevronDown } from 'lucide-react';
 
 const pageTitles = {
   dashboard: { title: 'Trading Dashboard', sub: 'Real-time XAUUSD Analysis' },
@@ -80,15 +80,6 @@ export default function Header({ activePage, livePrice, priceChange }) {
             </span>
           )}
         </button>
-        <button
-          onClick={() => setAlerts(0)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-colors"
-          style={{ background: '#111827', border: '1px solid #1f2937' }}
-        >
-          <RefreshCw size={12} />
-          Refresh
-        </button>
-
         {/* Profile dropdown */}
         <div className="relative" ref={profileRef}>
           <button
