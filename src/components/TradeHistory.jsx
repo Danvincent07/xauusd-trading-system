@@ -118,12 +118,11 @@ function HistoryRow({ trade }) {
       </div>
 
       {/* Price levels */}
-      <div className="grid grid-cols-4 gap-2 mb-2 text-center">
+      <div className="grid grid-cols-3 gap-2 mb-2 text-center">
         {[
           { label: 'Entry',  val: trade.entry_price, color: '#f1f5f9' },
           { label: 'SL',     val: trade.sl_price,    color: '#f87171' },
           { label: 'TP',     val: trade.tp_price,    color: '#4ade80' },
-          { label: 'Exit',   val: trade.exit_price ?? '—', color: resultColor },
         ].map(({ label, val, color }) => (
           <div key={label} className="p-1.5 rounded-lg" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid #1a2444' }}>
             <div className="text-xs text-slate-500 mb-0.5">{label}</div>

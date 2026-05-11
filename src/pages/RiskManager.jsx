@@ -216,6 +216,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
   });
   const prevScalpKey = useRef(null);
   const prevSwingKey = useRef(null);
+  const prevAutoCalcKey = useRef(null);
 
   const signal = useMemo(() => buildAutoChecks(livePrice, priceChange, priceHistory), [livePrice, priceChange, priceHistory]);
   const tradeAnalysis = useMemo(() => buildScalpSwingAnalysis(priceHistory, livePrice), [priceHistory, livePrice]);
@@ -463,6 +464,43 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
   }, [account, riskPct, entryPrice, stopLoss, takeProfit, partialAt, effectiveDirection]);
 
   const rrColor = calc.rr >= 3 ? '#22c55e' : calc.rr >= 1.5 ? '#f59e0b' : '#ef4444';
+
+  // Auto-log calculator trade when confidence reaches 55% (placed after calc is defined)
+  useEffect(() => {
+    if (!calc.hasTradeLevels || setupQualification.confidence < 55) return;
+    const direction = calc.bullish ? 'BUY' : 'SELL';
+    const entry = parseFloat(entryPrice);
+    const sl    = parseFloat(stopLoss);
+    const tp    = parseFloat(takeProfit);
+    if (!entry || !sl || !tp) return;
+    const key = `Auto-${direction}-${entry}-${sl}-${tp}`;
+    if (prevAutoCalcKey.current === key) return;
+    prevAutoCalcKey.current = key;
+    setTradeLog((log) => {
+      if (log.length > 0) {
+        const last = log[0];
+        if (`Auto-${last.direction}-${last.entry}-${last.stopLoss}-${last.takeProfit}` === key) return log;
+      }
+      return [
+        {
+          id: Date.now() + Math.random(),
+          type: 'Manual',
+          direction,
+          entry,
+          stopLoss: sl,
+          takeProfit: tp,
+          reasons: [`R:R 1:${calc.rr}`, `Risk $${calc.riskAmount.toFixed(2)}`, `${calc.posSize.toFixed(4)} lots`],
+          timeframe: entryTimeframe,
+          confidence: setupQualification.confidence,
+          openedAt: new Date().toISOString(),
+          status: 'OPEN',
+          closedAt: null,
+          closedPrice: null,
+        },
+        ...log,
+      ].slice(0, 50);
+    });
+  }, [setupQualification.confidence, calc, entryPrice, stopLoss, takeProfit, entryTimeframe]);
 
   const Input = ({ label, value, onChange, prefix, step = '1', note, disabled = false }) => (
     <div>
