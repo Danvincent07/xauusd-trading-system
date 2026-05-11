@@ -1,4 +1,4 @@
-const GOLD_API_URL = 'https://api.gold-api.com/price/XAU'
+const GOLD_API_URL = import.meta.env.VITE_GOLD_API_URL ?? 'https://api.gold-api.com/price/XAU'
 
 export async function fetchLiveGoldQuote(signal) {
   const response = await fetch(GOLD_API_URL, { signal })

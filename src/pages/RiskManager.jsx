@@ -3,6 +3,8 @@ import { Shield, AlertTriangle, TrendingUp, Calculator, ChevronRight, Info, Chec
 import { calcPositionSize, calcRiskReward } from '../utils/calculations';
 import { buildAutoChecks, buildScalpSwingAnalysis } from '../utils/sniperSignal';
 import { RadialBarChart, RadialBar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { upsertTrade } from '../services/tradeHistory';
+import TradeHistory from '../components/TradeHistory';
 
 const RULES = [
   { icon: Shield,      color: '#22c55e', title: 'Max Risk Per Trade',   value: '1–2%',   desc: 'Default 1%. Never exceed 2% of account on a single trade.' },
@@ -277,6 +279,17 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
       }),
     );
   }, [livePrice]);
+
+  // Sync tradeLog changes to Supabase (upsert on new trade or status change)
+  const syncedStatusRef = useRef({});
+  useEffect(() => {
+    for (const trade of tradeLog) {
+      if (syncedStatusRef.current[trade.id] !== trade.status) {
+        syncedStatusRef.current[trade.id] = trade.status;
+        upsertTrade(trade);
+      }
+    }
+  }, [tradeLog]);
 
   // Direction: structure events (CHoCH/BOS/Sweep/Pullback) → VWAP → priceChange
   const effectiveDirection = signal.direction !== 'WAIT'
@@ -795,6 +808,47 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
                 {calc.bullish ? '▲ LONG (BUY)' : '▼ SHORT (SELL)'}
               </span>
             </div>
+
+            {/* Log Trade button */}
+            {calc.hasTradeLevels && (
+              <button
+                type="button"
+                onClick={() => {
+                  const direction = calc.bullish ? 'BUY' : 'SELL';
+                  const entry = parseFloat(entryPrice);
+                  const sl    = parseFloat(stopLoss);
+                  const tp    = parseFloat(takeProfit);
+                  setTradeLog((log) => {
+                    const key = `Manual-${direction}-${entry}-${sl}-${tp}`;
+                    if (log.length > 0) {
+                      const last = log[0];
+                      if (`Manual-${last.direction}-${last.entry}-${last.stopLoss}-${last.takeProfit}` === key) return log;
+                    }
+                    return [
+                      {
+                        id: Date.now() + Math.random(),
+                        type: 'Manual',
+                        direction,
+                        entry,
+                        stopLoss: sl,
+                        takeProfit: tp,
+                        reasons: [`R:R 1:${calc.rr}`, `Risk $${calc.riskAmount.toFixed(2)}`, `${calc.posSize.toFixed(4)} lots`],
+                        timeframe: entryTimeframe,
+                        openedAt: new Date().toISOString(),
+                        status: 'OPEN',
+                        closedAt: null,
+                        closedPrice: null,
+                      },
+                      ...log,
+                    ].slice(0, 50);
+                  });
+                }}
+                className="w-full py-2 rounded-lg text-sm font-bold transition-colors"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
+              >
+                + Log Trade to History
+              </button>
+            )}
           </div>
 
           {/* Results */}
@@ -895,7 +949,11 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
           </div>
         </div>
 
-        {/* ── Trade Hit Log ─────────────────────────────────────────────────────── */}
+        {/* ── Trade History ──────────────────────────────────────────────────── */}
+        <TradeHistory openTrades={tradeLog.filter((t) => t.status === 'OPEN')} />
+
+        {/* ── Legacy local log (closed trades only — for offline fallback) ──── */}
+        {tradeLog.some((t) => t.status !== 'OPEN') && (
         <div className="card-dark mt-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
@@ -1018,6 +1076,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
