@@ -87,7 +87,7 @@ export async function fetchHistory({ page = 1, pageSize = 20, search = '', filte
   let query = supabase
     .from(TABLE)
     .select('*', { count: 'exact' })
-    .neq('status', 'OPEN')
+    .in('status', ['TP_HIT', 'SL_HIT'])
     .gte('confidence', 55)
     .order('close_time', { ascending: false })
 
@@ -114,7 +114,7 @@ export async function fetchStats() {
   const { data, error } = await supabase
     .from(TABLE)
     .select('result, pnl')
-    .neq('status', 'OPEN')
+    .in('status', ['TP_HIT', 'SL_HIT'])
     .gte('confidence', 55)
     .order('close_time', { ascending: true })
 

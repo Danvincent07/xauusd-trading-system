@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { fetchHistory, fetchStats, subscribeToHistory } from '../services/tradeHistory'
 
-const FILTERS = ['ALL', 'WIN', 'BUY', 'SELL']
+const FILTERS = ['ALL', 'WIN', 'LOSS', 'BUY', 'SELL']
 const PAGE_SIZE = 5
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
