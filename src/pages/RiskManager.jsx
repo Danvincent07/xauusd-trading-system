@@ -808,47 +808,6 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
                 {calc.bullish ? '▲ LONG (BUY)' : '▼ SHORT (SELL)'}
               </span>
             </div>
-
-            {/* Log Trade button */}
-            {calc.hasTradeLevels && (
-              <button
-                type="button"
-                onClick={() => {
-                  const direction = calc.bullish ? 'BUY' : 'SELL';
-                  const entry = parseFloat(entryPrice);
-                  const sl    = parseFloat(stopLoss);
-                  const tp    = parseFloat(takeProfit);
-                  setTradeLog((log) => {
-                    const key = `Manual-${direction}-${entry}-${sl}-${tp}`;
-                    if (log.length > 0) {
-                      const last = log[0];
-                      if (`Manual-${last.direction}-${last.entry}-${last.stopLoss}-${last.takeProfit}` === key) return log;
-                    }
-                    return [
-                      {
-                        id: Date.now() + Math.random(),
-                        type: 'Manual',
-                        direction,
-                        entry,
-                        stopLoss: sl,
-                        takeProfit: tp,
-                        reasons: [`R:R 1:${calc.rr}`, `Risk $${calc.riskAmount.toFixed(2)}`, `${calc.posSize.toFixed(4)} lots`],
-                        timeframe: entryTimeframe,
-                        openedAt: new Date().toISOString(),
-                        status: 'OPEN',
-                        closedAt: null,
-                        closedPrice: null,
-                      },
-                      ...log,
-                    ].slice(0, 50);
-                  });
-                }}
-                className="w-full py-2 rounded-lg text-sm font-bold transition-colors"
-                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
-              >
-                + Log Trade to History
-              </button>
-            )}
           </div>
 
           {/* Results */}
@@ -929,6 +888,93 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
                 After {partialAt}% partial close → Move stop loss to breakeven. Risk-free trade.
               </p>
             </div>
+
+            {/* Log Trade button */}
+            {calc.hasTradeLevels && (
+              <button
+                type="button"
+                onClick={() => {
+                  const direction = calc.bullish ? 'BUY' : 'SELL';
+                  const entry = parseFloat(entryPrice);
+                  const sl    = parseFloat(stopLoss);
+                  const tp    = parseFloat(takeProfit);
+                  setTradeLog((log) => {
+                    const key = `Manual-${direction}-${entry}-${sl}-${tp}`;
+                    if (log.length > 0) {
+                      const last = log[0];
+                      if (`Manual-${last.direction}-${last.entry}-${last.stopLoss}-${last.takeProfit}` === key) return log;
+                    }
+                    return [
+                      {
+                        id: Date.now() + Math.random(),
+                        type: 'Manual',
+                        direction,
+                        entry,
+                        stopLoss: sl,
+                        takeProfit: tp,
+                        reasons: [`R:R 1:${calc.rr}`, `Risk $${calc.riskAmount.toFixed(2)}`, `${calc.posSize.toFixed(4)} lots`],
+                        timeframe: entryTimeframe,
+                        openedAt: new Date().toISOString(),
+                        status: 'OPEN',
+                        closedAt: null,
+                        closedPrice: null,
+                      },
+                      ...log,
+                    ].slice(0, 50);
+                  });
+                }}
+                className="w-full py-2 rounded-lg text-sm font-bold transition-colors"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
+              >
+                + Log Trade to History
+              </button>
+            )}
+
+            {/* Open Trades inline */}
+            {tradeLog.filter((t) => t.status === 'OPEN').length > 0 && (
+              <div className="card-dark">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 mb-3">
+                  <Clock size={13} className="text-amber-400" />
+                  Open Trades
+                  <span className="px-1.5 py-0.5 rounded-full text-xs font-bold text-amber-400"
+                    style={{ background: 'rgba(245,158,11,0.18)' }}>
+                    {tradeLog.filter((t) => t.status === 'OPEN').length}
+                  </span>
+                </h3>
+                <div className="space-y-2">
+                  {tradeLog.filter((t) => t.status === 'OPEN').map((trade) => {
+                    const isBuy = trade.direction === 'BUY';
+                    return (
+                      <div key={trade.id} className="rounded-xl p-3"
+                        style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold"
+                              style={{ background: isBuy ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)', color: isBuy ? '#22c55e' : '#ef4444' }}>
+                              {trade.direction} {isBuy ? '▲' : '▼'}
+                            </span>
+                            <span className="text-xs font-semibold text-slate-300">{trade.type}</span>
+                            <span className="text-xs text-slate-500 font-mono">{trade.timeframe}</span>
+                          </div>
+                          <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                            <Clock size={9} /> OPEN
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {[{ label: 'Entry', val: trade.entry, color: '#f1f5f9' }, { label: 'SL', val: trade.stopLoss, color: '#f87171' }, { label: 'TP', val: trade.takeProfit, color: '#4ade80' }].map(({ label, val, color }) => (
+                            <div key={label} className="p-1.5 rounded-lg" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid #1a2444' }}>
+                              <div className="text-xs text-slate-500 mb-0.5">{label}</div>
+                              <div className="font-mono text-xs font-bold" style={{ color }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-1.5 text-xs text-slate-600">Opened: {new Date(trade.openedAt).toLocaleString()}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -950,7 +996,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
         </div>
 
         {/* ── Trade History ──────────────────────────────────────────────────── */}
-        <TradeHistory openTrades={tradeLog.filter((t) => t.status === 'OPEN')} />
+        <TradeHistory />
 
         {/* ── Legacy local log (closed trades only — for offline fallback) ──── */}
         {tradeLog.some((t) => t.status !== 'OPEN') && (

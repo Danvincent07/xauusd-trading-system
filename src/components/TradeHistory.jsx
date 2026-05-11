@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  CheckCircle2, XCircle, Clock, Search, ChevronLeft, ChevronRight,
-  TrendingUp, TrendingDown, BarChart2, Trophy, AlertTriangle, DollarSign, Trash2,
+  CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight,
+  TrendingUp, TrendingDown, BarChart2, Trophy, AlertTriangle, DollarSign,
 } from 'lucide-react'
 import { fetchHistory, fetchStats, subscribeToHistory } from '../services/tradeHistory'
 
 const FILTERS = ['ALL', 'WIN', 'LOSS', 'BUY', 'SELL']
-const PAGE_SIZE = 10
+const PAGE_SIZE = 5
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color, sub }) {
@@ -155,7 +155,7 @@ function HistoryRow({ trade }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function TradeHistory({ openTrades = [] }) {
+export default function TradeHistory() {
   const [history, setHistory]   = useState([])
   const [total, setTotal]       = useState(0)
   const [stats, setStats]       = useState(null)
@@ -241,23 +241,6 @@ export default function TradeHistory({ openTrades = [] }) {
         )}
       </div>
 
-      {/* ── Open Trades ──────────────────────────────────────────────────────── */}
-      {openTrades.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 mb-3">
-            <Clock size={14} className="text-amber-400" />
-            Open Trades
-            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold text-amber-400"
-              style={{ background: 'rgba(245,158,11,0.18)' }}>
-              {openTrades.length}
-            </span>
-          </h3>
-          <div className="space-y-2">
-            {openTrades.map((t) => <OpenTradeRow key={t.id} trade={t} />)}
-          </div>
-        </div>
-      )}
-
       {/* ── Trade History Table ───────────────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -336,51 +319,51 @@ export default function TradeHistory({ openTrades = [] }) {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 text-xs text-slate-500">
-            <span>Page {page} of {totalPages} · {total} trades</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded-lg disabled:opacity-30 transition-colors hover:text-slate-300"
-                style={{ background: '#0a0e1a', border: '1px solid #1a2444' }}
-              >
-                <ChevronLeft size={12} />
-              </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const start = Math.max(1, Math.min(page - 2, totalPages - 4))
-                const p = start + i
-                return p <= totalPages ? (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPage(p)}
-                    className="w-6 h-6 rounded-md text-xs font-mono transition-colors"
-                    style={{
-                      background: p === page ? 'rgba(245,158,11,0.18)' : '#0a0e1a',
-                      border: `1px solid ${p === page ? 'rgba(245,158,11,0.35)' : '#1a2444'}`,
-                      color: p === page ? '#f59e0b' : '#64748b',
-                    }}
-                  >
-                    {p}
-                  </button>
-                ) : null
-              })}
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded-lg disabled:opacity-30 transition-colors hover:text-slate-300"
-                style={{ background: '#0a0e1a', border: '1px solid #1a2444' }}
-              >
-                <ChevronRight size={12} />
-              </button>
-            </div>
+        {/* Pagination — always shown */}
+        <div className="flex items-center justify-between mt-4 text-xs text-slate-500">
+          <span>
+            {total === 0 ? 'No trades' : `Showing ${Math.min((page - 1) * PAGE_SIZE + 1, total)}–${Math.min(page * PAGE_SIZE, total)} of ${total} trades`}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg disabled:opacity-30 transition-colors hover:text-slate-300"
+              style={{ background: '#0a0e1a', border: '1px solid #1a2444' }}
+            >
+              <ChevronLeft size={12} />
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, totalPages - 4))
+              const p = start + i
+              return p <= totalPages ? (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className="w-6 h-6 rounded-md text-xs font-mono transition-colors"
+                  style={{
+                    background: p === page ? 'rgba(245,158,11,0.18)' : '#0a0e1a',
+                    border: `1px solid ${p === page ? 'rgba(245,158,11,0.35)' : '#1a2444'}`,
+                    color: p === page ? '#f59e0b' : '#64748b',
+                  }}
+                >
+                  {p}
+                </button>
+              ) : null
+            })}
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg disabled:opacity-30 transition-colors hover:text-slate-300"
+              style={{ background: '#0a0e1a', border: '1px solid #1a2444' }}
+            >
+              <ChevronRight size={12} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
