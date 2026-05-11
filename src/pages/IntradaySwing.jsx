@@ -339,17 +339,17 @@ export default function IntradaySwing({ livePrice, priceChange, lastUpdated, pri
   };
 
   if (!smc.ready) {
-    const pct = Math.min(100, Math.round((priceHistory.length / 30) * 100));
+    const pct = Math.min(100, Math.round((priceHistory.length / 130) * 100));
     return (
       <div className="p-4 lg:p-6">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <Activity size={32} className="text-amber-400 animate-pulse" />
           <div className="text-slate-300 font-semibold">Analyzing Market Structure…</div>
-          <div className="text-slate-500 text-sm">Collecting price history — {priceHistory.length} / 30 ticks</div>
+          <div className="text-slate-500 text-sm">Collecting price history — {priceHistory.length} / 130 ticks</div>
           <div className="w-56 h-2 rounded-full overflow-hidden" style={{ background: '#1a2444' }}>
             <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
           </div>
-          <div className="text-xs text-slate-600">SMC engine requires 30 ticks to build synthetic candles</div>
+          <div className="text-xs text-slate-600">SMC engine requires 130 ticks to build synthetic candles</div>
         </div>
       </div>
     );
