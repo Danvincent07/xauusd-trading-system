@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Shield, AlertTriangle, TrendingUp, Calculator, ChevronRight, Info, CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Shield, AlertTriangle, TrendingUp, Calculator, ChevronRight, Info, Clock, Trash2 } from 'lucide-react';
 import { calcPositionSize, calcRiskReward } from '../utils/calculations';
 import { buildAutoChecks, buildScalpSwingAnalysis } from '../utils/sniperSignal';
 import { RadialBarChart, RadialBar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
@@ -231,6 +231,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
 
     function addIfNew(setup, type) {
       if (!setup.active || setup.entry === null) return;
+      if (!setup.highProbability && (setup.confidence ?? 0) < 55) return; // only log setups with confidence ≥ 55%
       const key = `${type}-${setup.direction}-${setup.entry}-${setup.stopLoss}-${setup.takeProfit}`;
       const prev = type === 'Scalp' ? prevScalpKey : prevSwingKey;
       if (prev.current === key) return;
@@ -245,6 +246,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
           takeProfit: setup.takeProfit,
           reasons: setup.reasons,
           timeframe: type === 'Scalp' ? entryTimeframe : confirmationTimeframe,
+          confidence: setup.confidence ?? 0,
           openedAt: new Date().toISOString(),
           status: 'OPEN',          // OPEN | TP_HIT | SL_HIT
           closedAt: null,
@@ -891,9 +893,12 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
 
             {/* Log Trade button */}
             {calc.hasTradeLevels && (
+              <>
               <button
                 type="button"
                 onClick={() => {
+                  // Block logging if confidence is below 55%
+                  if (setupQualification.confidence < 55) return;
                   const direction = calc.bullish ? 'BUY' : 'SELL';
                   const entry = parseFloat(entryPrice);
                   const sl    = parseFloat(stopLoss);
@@ -914,6 +919,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
                         takeProfit: tp,
                         reasons: [`R:R 1:${calc.rr}`, `Risk $${calc.riskAmount.toFixed(2)}`, `${calc.posSize.toFixed(4)} lots`],
                         timeframe: entryTimeframe,
+                        confidence: setupQualification.confidence,
                         openedAt: new Date().toISOString(),
                         status: 'OPEN',
                         closedAt: null,
@@ -928,6 +934,12 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
               >
                 + Log Trade to History
               </button>
+              <p className="text-xs text-center mt-1" style={{ color: setupQualification.confidence >= 55 ? '#64748b' : '#ef4444' }}>
+                {setupQualification.confidence >= 55
+                  ? `✓ ${setupQualification.confidence}% confidence — entry will be logged`
+                  : `✗ ${setupQualification.confidence}% confidence — entry will not be logged (min 55% required)`}
+              </p>
+              </>
             )}
 
             {/* Open Trades inline */}
@@ -998,131 +1010,7 @@ export default function RiskManager({ livePrice = 0, priceChange = 0, lastUpdate
         {/* ── Trade History ──────────────────────────────────────────────────── */}
         <TradeHistory />
 
-        {/* ── Legacy local log (closed trades only — for offline fallback) ──── */}
-        {tradeLog.some((t) => t.status !== 'OPEN') && (
-        <div className="card-dark mt-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-amber-400" />
-              Trade Hit Log
-            </h3>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Open: {tradeLog.filter((t) => t.status === 'OPEN').length}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" />TP Hit: {tradeLog.filter((t) => t.status === 'TP_HIT').length}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />SL Hit: {tradeLog.filter((t) => t.status === 'SL_HIT').length}</span>
-              </div>
-              {tradeLog.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => { setTradeLog([]); prevScalpKey.current = null; prevSwingKey.current = null; }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-500 hover:text-red-400 transition-colors"
-                  style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
-                >
-                  <Trash2 size={10} /> Clear
-                </button>
-              )}
-            </div>
-          </div>
 
-          {tradeLog.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Clock size={28} className="text-slate-700 mb-3" />
-              <p className="text-sm text-slate-600">No setups logged yet.</p>
-              <p className="text-xs text-slate-700 mt-1">Setups are recorded automatically when a scalp or swing entry triggers.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {tradeLog.map((trade) => {
-                const isBuy = trade.direction === 'BUY';
-                const isOpen = trade.status === 'OPEN';
-                const isTP = trade.status === 'TP_HIT';
-                const pnlPips = trade.closedPrice !== null
-                  ? isBuy
-                    ? +(trade.closedPrice - trade.entry).toFixed(2)
-                    : +(trade.entry - trade.closedPrice).toFixed(2)
-                  : null;
-
-                const statusColor = isOpen ? '#f59e0b' : isTP ? '#22c55e' : '#ef4444';
-                const statusBg = isOpen ? 'rgba(245,158,11,0.10)' : isTP ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)';
-                const statusBorder = isOpen ? 'rgba(245,158,11,0.25)' : isTP ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
-                const dirColor = isBuy ? '#22c55e' : '#ef4444';
-
-                return (
-                  <div
-                    key={trade.id}
-                    className="rounded-xl p-3"
-                    style={{ background: statusBg, border: `1px solid ${statusBorder}` }}
-                  >
-                    {/* Header row */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="px-2 py-0.5 rounded-full text-xs font-bold"
-                          style={{ background: isBuy ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)', color: dirColor }}
-                        >
-                          {trade.direction} {isBuy ? '▲' : '▼'}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-300">{trade.type}</span>
-                        <span className="text-xs text-slate-500 font-mono">{trade.timeframe}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isOpen && pnlPips !== null && (
-                          <span className="font-mono text-xs font-bold" style={{ color: statusColor }}>
-                            {pnlPips > 0 ? '+' : ''}{pnlPips} pts
-                          </span>
-                        )}
-                        <span
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                          style={{ background: 'rgba(15,23,42,0.7)', color: statusColor }}
-                        >
-                          {isOpen ? <Clock size={9} /> : isTP ? <CheckCircle2 size={9} /> : <XCircle size={9} />}
-                          {isOpen ? 'OPEN' : isTP ? 'TP HIT' : 'SL HIT'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Levels row */}
-                    <div className="grid grid-cols-3 gap-2 mb-2">
-                      {[
-                        { label: 'Entry', val: trade.entry, color: '#f1f5f9' },
-                        { label: 'Stop', val: trade.stopLoss, color: '#f87171' },
-                        { label: 'Target', val: trade.takeProfit, color: '#4ade80' },
-                      ].map(({ label, val, color }) => (
-                        <div key={label} className="text-center p-1.5 rounded-lg" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid #1a2444' }}>
-                          <div className="text-xs text-slate-500 mb-0.5">{label}</div>
-                          <div className="font-mono text-xs font-bold" style={{ color }}>{val}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Timestamps + close price */}
-                    <div className="flex items-center justify-between text-xs text-slate-600">
-                      <span>Opened: {new Date(trade.openedAt).toLocaleTimeString()}</span>
-                      {trade.closedAt && (
-                        <span style={{ color: statusColor }}>
-                          Closed @ {trade.closedPrice} · {new Date(trade.closedAt).toLocaleTimeString()}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Confluence reasons */}
-                    {trade.reasons?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {trade.reasons.map((r) => (
-                          <span key={r} className="px-1.5 py-0.5 rounded text-xs text-slate-500" style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid #1a2444' }}>
-                            ✓ {r}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        )}
       </div>
     </div>
   );
